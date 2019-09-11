@@ -2,7 +2,6 @@ import { constants } from '@0x/contracts-test-utils';
 import { defaultOrmConfig, getAppAsync } from '@0x/coordinator-server';
 import { BlockchainLifecycle, tokenUtils } from '@0x/dev-utils';
 import { FillScenarios } from '@0x/fill-scenarios';
-import { assetDataUtils } from '@0x/order-utils';
 import { SignedOrder } from '@0x/types';
 import { BigNumber, fetchAsync, logUtils } from '@0x/utils';
 import * as chai from 'chai';
@@ -90,8 +89,8 @@ describe('CoordinatorWrapper', () => {
         ] = userAddresses.slice(0, 7);
         [makerTokenAddress, takerTokenAddress] = tokenUtils.getDummyERC20TokenAddresses();
         [makerAssetData, takerAssetData] = [
-            assetDataUtils.encodeERC20AssetData(makerTokenAddress),
-            assetDataUtils.encodeERC20AssetData(takerTokenAddress),
+            await contractWrappers.devUtils.encodeERC20AssetData.callAsync(makerTokenAddress),
+            await contractWrappers.devUtils.encodeERC20AssetData.callAsync(takerTokenAddress),
         ];
 
         // set up mock coordinator server

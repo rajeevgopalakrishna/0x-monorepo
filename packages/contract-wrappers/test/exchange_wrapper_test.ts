@@ -1,6 +1,6 @@
 import { BlockchainLifecycle, callbackErrorReporter } from '@0x/dev-utils';
 import { FillScenarios } from '@0x/fill-scenarios';
-import { assetDataUtils, orderHashUtils, signatureUtils } from '@0x/order-utils';
+import { orderHashUtils, signatureUtils } from '@0x/order-utils';
 import { DoneCallback, SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 import * as chai from 'chai';
@@ -62,8 +62,8 @@ describe('ExchangeWrapper', () => {
         [, makerAddress, takerAddress, , anotherMakerAddress] = userAddresses;
         [makerTokenAddress, takerTokenAddress] = tokenUtils.getDummyERC20TokenAddresses();
         [makerAssetData, takerAssetData] = [
-            assetDataUtils.encodeERC20AssetData(makerTokenAddress),
-            assetDataUtils.encodeERC20AssetData(takerTokenAddress),
+            await contractWrappers.devUtils.encodeERC20AssetData.callAsync(makerTokenAddress),
+            await contractWrappers.devUtils.encodeERC20AssetData.callAsync(takerTokenAddress),
         ];
         signedOrder = await fillScenarios.createFillableSignedOrderAsync(
             makerAssetData,
