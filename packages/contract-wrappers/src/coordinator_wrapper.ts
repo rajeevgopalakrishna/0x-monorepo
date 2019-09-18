@@ -793,7 +793,7 @@ export class CoordinatorWrapper {
             salt: generatePseudoRandomSalt(),
             signerAddress,
             data,
-            verifyingContractAddress: this.exchangeAddress,
+            verifyingContract: this.exchangeAddress,
         };
         const signedTransaction = await signatureUtils.ecSignTransactionAsync(
             this._web3Wrapper.getProvider(),
