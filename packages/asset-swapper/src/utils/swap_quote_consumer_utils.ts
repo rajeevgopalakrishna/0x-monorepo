@@ -1,11 +1,21 @@
 import { ContractWrappers } from '@0x/contract-wrappers';
+import { assetDataUtils } from '@0x/order-utils';
 import { MarketOperation, SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 import { SupportedProvider, Web3Wrapper } from '@0x/web3-wrapper';
+import { Provider } from 'ethereum-types';
 import * as _ from 'lodash';
 
 import { constants } from '../constants';
-import { SwapQuote, SwapQuoteConsumerError, SwapQuoteExecutionOpts } from '../types';
+import {
+    ExtensionContractType,
+    SmartSwapQuoteGetOutputOpts,
+    SwapQuote,
+    SwapQuoteConsumerError,
+    SwapQuoteExecutionOpts,
+} from '../types';
+
+import { assert } from './assert';
 
 export const swapQuoteConsumerUtils = {
     async getTakerAddressOrThrowAsync(
@@ -68,5 +78,38 @@ export const swapQuoteConsumerUtils = {
             }
             return optimizedOrder;
         });
+    },
+    async getExtensionContractTypeForSwapQuoteAsync(
+        quote: SwapQuote,
+        contractWrappers: ContractWrappers,
+        provider: Provider,
+        opts: Partial<SmartSwapQuoteGetOutputOpts>,
+    ): Promise<ExtensionContractType> {
+        const wethAssetData = assetDataUtils.encodeERC20AssetData(contractWrappers.contractAddresses.etherToken);
+        if (swapQuoteConsumerUtils.isValidForwarderSwapQuote(quote, wethAssetData)) {
+            if (opts.takerAddress !== undefined) {
+                assert.isETHAddressHex('takerAddress', opts.takerAddress);
+            }
+            const ethAmount = opts.ethAmount || quote.worstCaseQuoteInfo.totalTakerTokenAmount;
+            const takerAddress = await swapQuoteConsumerUtils.getTakerAddressAsync(provider, opts);
+            const takerEthAndWethBalance =
+                takerAddress !== undefined
+                    ? await swapQuoteConsumerUtils.getEthAndWethBalanceAsync(provider, contractWrappers, takerAddress)
+                    : [constants.ZERO_AMOUNT, constants.ZERO_AMOUNT];
+            // TODO(david): when considering if there is enough Eth balance, should account for gas costs.
+            const isEnoughEthAndWethBalance = _.map(takerEthAndWethBalance, (balance: BigNumber) =>
+                balance.isGreaterThanOrEqualTo(ethAmount),
+            );
+            if (isEnoughEthAndWethBalance[1]) {
+                // should be more gas efficient to use exchange consumer, so if possible use it.
+                return ExtensionContractType.None;
+            } else if (isEnoughEthAndWethBalance[0] && !isEnoughEthAndWethBalance[1]) {
+                return ExtensionContractType.Forwarder;
+            }
+            // Note: defaulting to forwarderConsumer if takerAddress is null or not enough balance of either wEth or Eth
+            return ExtensionContractType.Forwarder;
+        } else {
+            return ExtensionContractType.None;
+        }
     },
 };

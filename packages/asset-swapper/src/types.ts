@@ -1,6 +1,7 @@
 import { MarketOperation, SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 import { MethodAbi } from 'ethereum-types';
+import { ForwarderSwapQuoteConsumer } from './quote_consumers/forwarder_swap_quote_consumer';
 
 /**
  * makerAssetData: The assetData representing the desired makerAsset.
@@ -183,6 +184,10 @@ export interface ForwarderSwapQuoteGetOutputOpts extends SwapQuoteGetOutputOptsB
 
 export type SwapQuote = MarketBuySwapQuote | MarketSellSwapQuote;
 
+export interface SmartSwapQuoteGetOutputOpts extends ForwarderSwapQuoteGetOutputOpts {
+    takerAddress?: string;
+}
+
 /**
  * takerAddress: The address to perform the buy. Defaults to the first available address from the provider.
  * useConsumerType: If provided, defaults the SwapQuoteConsumer to create output consumed by ConsumerType.
@@ -197,6 +202,11 @@ export interface ForwarderSwapQuoteExecutionOpts extends ForwarderSwapQuoteGetOu
  * Represents the options for executing a swap quote with SwapQuoteConsumer
  */
 export interface SwapQuoteExecutionOpts extends SwapQuoteGetOutputOpts, ForwarderSwapQuoteExecutionOpts {}
+
+/**
+ * Represents the options for executing a swap quote with SmartSwapQuoteConsumer
+ */
+export interface SmartSwapQuoteExecutionOpts extends SmartSwapQuoteGetOutputOpts, ForwarderSwapQuoteExecutionOpts {}
 
 /**
  * takerAssetData: String that represents a specific taker asset (for more info: https://github.com/0xProject/0x-protocol-specification/blob/master/v2/v2-specification.md).
