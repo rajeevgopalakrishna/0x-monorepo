@@ -6,7 +6,6 @@ import { schemas } from '@0x/json-schemas';
 import {
     BlockParam,
     BlockParamLiteral,
-    BlockRange,
     CallData,
     ContractAbi,
     ContractArtifact,
@@ -38,14 +37,14 @@ export class IWalletContract extends BaseContract {
          * since they don't modify state.
          * @param hash Message hash that is signed.
          * @param signature Proof of signing.
-         * @returns Magic bytes4 value if the signature is valid.         Magic value is bytes4(keccak256(&quot;isValidWalletSignature(bytes32,address,bytes)&quot;))
+         * @returns Validity of order signature.
          */
         async callAsync(
             hash: string,
             signature: string,
             callData: Partial<CallData> = {},
             defaultBlock?: BlockParam,
-        ): Promise<string> {
+        ): Promise<boolean> {
             assert.isString('hash', hash);
             assert.isString('signature', signature);
             assert.doesConformToSchema('callData', callData, schemas.callDataSchema, [
@@ -79,7 +78,7 @@ export class IWalletContract extends BaseContract {
             BaseContract._throwIfCallResultIsRevertError(rawCallResult);
             const abiEncoder = self._lookupAbiEncoder('isValidSignature(bytes32,bytes)');
             // tslint:disable boolean-naming
-            const result = abiEncoder.strictDecodeReturnValue<string>(rawCallResult);
+            const result = abiEncoder.strictDecodeReturnValue<boolean>(rawCallResult);
             // tslint:enable boolean-naming
             return result;
         },
@@ -89,7 +88,6 @@ export class IWalletContract extends BaseContract {
          * to create a 0x transaction (see protocol spec for more details).
          * @param hash Message hash that is signed.
          * @param signature Proof of signing.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(hash: string, signature: string): string {
             assert.isString('hash', hash);
@@ -101,28 +99,18 @@ export class IWalletContract extends BaseContract {
             ]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): string {
+        getABIDecodedTransactionData(callData: string): boolean {
             const self = (this as any) as IWalletContract;
             const abiEncoder = self._lookupAbiEncoder('isValidSignature(bytes32,bytes)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<boolean>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
-        getABIDecodedReturnData(returnData: string): string {
+        getABIDecodedReturnData(returnData: string): boolean {
             const self = (this as any) as IWalletContract;
             const abiEncoder = self._lookupAbiEncoder('isValidSignature(bytes32,bytes)');
             // tslint:disable boolean-naming
-            const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<string>(returnData);
+            const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<boolean>(returnData);
             return abiDecodedReturnData;
         },
     };
@@ -210,8 +198,8 @@ export class IWalletContract extends BaseContract {
                 name: 'isValidSignature',
                 outputs: [
                     {
-                        name: '',
-                        type: 'bytes4',
+                        name: 'isValid',
+                        type: 'bool',
                     },
                 ],
                 payable: false,

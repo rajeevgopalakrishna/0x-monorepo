@@ -1,6 +1,6 @@
 ## ethereum-types
 
-TypeScript types shared across Ethereum-related packages/libraries/tools.
+Typescript types shared across Ethereum-related packages/libraries/tools.
 
 ## Installation
 

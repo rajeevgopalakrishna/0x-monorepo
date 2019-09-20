@@ -1,49 +1,62 @@
-import { AcceptedRejectedOrders, Orderbook } from '@0x/orderbook';
 import { Web3ProviderEngine } from '@0x/subproviders';
-import { APIOrder, AssetPairsItem, SignedOrder } from '@0x/types';
 import * as TypeMoq from 'typemoq';
 
 import { SwapQuoter } from '../../src/swap_quoter';
-import { OrdersAndFillableAmounts } from '../../src/types';
+import { OrderProvider, OrderProviderResponse, OrdersAndFillableAmounts } from '../../src/types';
 
-class OrderbookClass extends Orderbook {
+// tslint:disable:promise-function-async
+
+// Implementing dummy class for using in mocks, see https://github.com/florinn/typemoq/issues/3
+class OrderProviderClass implements OrderProvider {
     // tslint:disable-next-line:prefer-function-over-method
-    public async getOrdersAsync(_makerAssetData: string, _takerAssetData: string): Promise<APIOrder[]> {
+    public async getOrdersAsync(): Promise<OrderProviderResponse> {
+        return Promise.resolve({ orders: [] });
+    }
+    // tslint:disable-next-line:prefer-function-over-method
+    public async getAvailableMakerAssetDatasAsync(takerAssetData: string): Promise<string[]> {
         return Promise.resolve([]);
     }
     // tslint:disable-next-line:prefer-function-over-method
-    public async getAvailableAssetDatasAsync(): Promise<AssetPairsItem[]> {
+    public async getAvailableTakerAssetDatasAsync(makerAssetData: string): Promise<string[]> {
         return Promise.resolve([]);
-    }
-    // tslint:disable-next-line:prefer-function-over-method
-    public async addOrdersAsync(_orders: SignedOrder[]): Promise<AcceptedRejectedOrders> {
-        return Promise.resolve({ accepted: [], rejected: [] });
     }
 }
-export const orderbookMock = () => {
-    return TypeMoq.Mock.ofType(OrderbookClass, TypeMoq.MockBehavior.Strict);
+
+export const orderProviderMock = () => {
+    return TypeMoq.Mock.ofType(OrderProviderClass, TypeMoq.MockBehavior.Strict);
 };
 
-export const mockAvailableAssetDatas = (
-    mockOrderbook: TypeMoq.IMock<OrderbookClass>,
-    availableAssetDatas: AssetPairsItem[],
+export const mockAvailableMakerAssetDatas = (
+    mockOrderProvider: TypeMoq.IMock<OrderProviderClass>,
+    assetData: string,
+    availableAssetDatas: string[],
 ) => {
-    mockOrderbook
-        .setup(async op => op.getAvailableAssetDatasAsync())
-        .returns(async () => Promise.resolve(availableAssetDatas))
+    mockOrderProvider
+        .setup(op => op.getAvailableMakerAssetDatasAsync(TypeMoq.It.isValue(assetData)))
+        .returns(() => {
+            return Promise.resolve(availableAssetDatas);
+        })
         .verifiable(TypeMoq.Times.once());
-    mockOrderbook
-        .setup(o => (o as any)._orderProvider)
-        .returns(() => undefined)
-        .verifiable(TypeMoq.Times.atLeast(0));
-    mockOrderbook
-        .setup(o => (o as any)._orderStore)
-        .returns(() => undefined)
-        .verifiable(TypeMoq.Times.atLeast(0));
 };
 
-const partiallyMockedSwapQuoter = (provider: Web3ProviderEngine, orderbook: Orderbook): TypeMoq.IMock<SwapQuoter> => {
-    const rawSwapQuoter = new SwapQuoter(provider, orderbook);
+export const mockAvailableTakerAssetDatas = (
+    mockOrderProvider: TypeMoq.IMock<OrderProviderClass>,
+    assetData: string,
+    availableAssetDatas: string[],
+) => {
+    mockOrderProvider
+        .setup(op => op.getAvailableTakerAssetDatasAsync(TypeMoq.It.isValue(assetData)))
+        .returns(() => {
+            return Promise.resolve(availableAssetDatas);
+        })
+        .verifiable(TypeMoq.Times.once());
+};
+
+const partiallyMockedSwapQuoter = (
+    provider: Web3ProviderEngine,
+    orderProvider: OrderProvider,
+): TypeMoq.IMock<SwapQuoter> => {
+    const rawSwapQuoter = new SwapQuoter(provider, orderProvider);
     const mockedSwapQuoter = TypeMoq.Mock.ofInstance(rawSwapQuoter, TypeMoq.MockBehavior.Loose, false);
     mockedSwapQuoter.callBase = true;
     return mockedSwapQuoter;
@@ -56,19 +69,19 @@ const mockGetOrdersAndAvailableAmounts = (
     ordersAndFillableAmounts: OrdersAndFillableAmounts,
 ): void => {
     mockedSwapQuoter
-        .setup(async a => a.getOrdersAndFillableAmountsAsync(makerAssetData, takerAssetData))
-        .returns(async () => Promise.resolve(ordersAndFillableAmounts))
+        .setup(a => a.getOrdersAndFillableAmountsAsync(makerAssetData, takerAssetData, false))
+        .returns(() => Promise.resolve(ordersAndFillableAmounts))
         .verifiable(TypeMoq.Times.once());
 };
 
 export const mockedSwapQuoterWithOrdersAndFillableAmounts = (
     provider: Web3ProviderEngine,
-    orderbook: Orderbook,
+    orderProvider: OrderProvider,
     makerAssetData: string,
     takerAssetData: string,
     ordersAndFillableAmounts: OrdersAndFillableAmounts,
 ): TypeMoq.IMock<SwapQuoter> => {
-    const mockedAssetQuoter = partiallyMockedSwapQuoter(provider, orderbook);
+    const mockedAssetQuoter = partiallyMockedSwapQuoter(provider, orderProvider);
     mockGetOrdersAndAvailableAmounts(mockedAssetQuoter, makerAssetData, takerAssetData, ordersAndFillableAmounts);
     return mockedAssetQuoter;
 };

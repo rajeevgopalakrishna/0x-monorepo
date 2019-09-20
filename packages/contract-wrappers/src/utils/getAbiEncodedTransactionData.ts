@@ -1,4 +1,4 @@
-import { ExchangeContract } from '@0x/abi-gen-wrappers';
+import { ExchangeContract } from '../index';
 
 /**
  * Returns the ABI encoded transaction hash for a given method and arguments

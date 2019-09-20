@@ -35,16 +35,16 @@ export type MediaChoice = OptionallyScreenSpecific<string>;
 export function stylesForMedia<T extends string | number>(
     cssPropertyName: string,
     choice: OptionallyScreenSpecific<T>,
-): InterpolationValue {
+): InterpolationValue[] {
     if (typeof choice === 'object') {
-        return `
+        return css`
         ${cssPropertyName}: ${choice.default};
         ${choice.lg && media.large`${cssPropertyName}: ${choice.lg}`}
         ${choice.md && media.medium`${cssPropertyName}: ${choice.md}`}
         ${choice.sm && media.small`${cssPropertyName}: ${choice.sm}`}
     `;
     } else {
-        return `
+        return css`
             ${cssPropertyName}: ${choice};
         `;
     }

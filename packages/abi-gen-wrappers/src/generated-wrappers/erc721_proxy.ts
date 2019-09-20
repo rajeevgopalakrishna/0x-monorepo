@@ -3,6 +3,7 @@
 // tslint:disable:no-unused-variable
 import {
     BaseContract,
+    BlockRange,
     EventCallback,
     IndexedFilterValues,
     SubscriptionManager,
@@ -12,7 +13,6 @@ import { schemas } from '@0x/json-schemas';
 import {
     BlockParam,
     BlockParamLiteral,
-    BlockRange,
     CallData,
     ContractAbi,
     ContractArtifact,
@@ -66,9 +66,8 @@ export class ERC721ProxyContract extends BaseContract {
          * @returns The hash of the transaction
          */
         async sendTransactionAsync(target: string, txData?: Partial<TxData> | undefined): Promise<string> {
-            assert.isString('target', target);
             const self = (this as any) as ERC721ProxyContract;
-            const encodedData = self._strictEncodeArguments('addAuthorizedAddress(address)', [target.toLowerCase()]);
+            const encodedData = self._strictEncodeArguments('addAuthorizedAddress(address)', [target]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
                     to: self.address,
@@ -76,12 +75,18 @@ export class ERC721ProxyContract extends BaseContract {
                     data: encodedData,
                 },
                 self._web3Wrapper.getContractDefaults(),
-                self.addAuthorizedAddress.estimateGasAsync.bind(self, target.toLowerCase()),
+                self.addAuthorizedAddress.estimateGasAsync.bind(self, target),
             );
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const txHash = await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
             return txHash;
         },
@@ -121,9 +126,8 @@ export class ERC721ProxyContract extends BaseContract {
          * @returns The hash of the transaction
          */
         async estimateGasAsync(target: string, txData?: Partial<TxData> | undefined): Promise<number> {
-            assert.isString('target', target);
             const self = (this as any) as ERC721ProxyContract;
-            const encodedData = self._strictEncodeArguments('addAuthorizedAddress(address)', [target.toLowerCase()]);
+            const encodedData = self._strictEncodeArguments('addAuthorizedAddress(address)', [target]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
                     to: self.address,
@@ -135,14 +139,15 @@ export class ERC721ProxyContract extends BaseContract {
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const gas = await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
             return gas;
-        },
-        async validateAndSendTransactionAsync(target: string, txData?: Partial<TxData> | undefined): Promise<string> {
-            await (this as any).addAuthorizedAddress.callAsync(target, txData);
-            const txHash = await (this as any).addAuthorizedAddress.sendTransactionAsync(target, txData);
-            return txHash;
         },
         /**
          * Sends a read-only call to the contract method. Returns the result that would happen if one were to send an
@@ -192,7 +197,6 @@ export class ERC721ProxyContract extends BaseContract {
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
          * @param target Address to authorize.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(target: string): string {
             assert.isString('target', target);
@@ -202,29 +206,24 @@ export class ERC721ProxyContract extends BaseContract {
             ]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): [string] {
+        getABIDecodedTransactionData(callData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('addAuthorizedAddress(address)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<[string]>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('addAuthorizedAddress(address)');
             // tslint:disable boolean-naming
             const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<void>(returnData);
             return abiDecodedReturnData;
+        },
+        async validateAndSendTransactionAsync(target: string, txData?: Partial<TxData> | undefined): Promise<string> {
+            await (this as any).addAuthorizedAddress.callAsync(target, txData);
+            const txHash = await (this as any).addAuthorizedAddress.sendTransactionAsync(target, txData);
+            return txHash;
         },
     };
     public authorities = {
@@ -278,7 +277,6 @@ export class ERC721ProxyContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(index_0: BigNumber): string {
             assert.isBigNumber('index_0', index_0);
@@ -286,23 +284,13 @@ export class ERC721ProxyContract extends BaseContract {
             const abiEncodedTransactionData = self._strictEncodeArguments('authorities(uint256)', [index_0]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): BigNumber {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('authorities(uint256)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<BigNumber>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('authorities(uint256)');
@@ -323,9 +311,8 @@ export class ERC721ProxyContract extends BaseContract {
          * @returns The hash of the transaction
          */
         async sendTransactionAsync(target: string, txData?: Partial<TxData> | undefined): Promise<string> {
-            assert.isString('target', target);
             const self = (this as any) as ERC721ProxyContract;
-            const encodedData = self._strictEncodeArguments('removeAuthorizedAddress(address)', [target.toLowerCase()]);
+            const encodedData = self._strictEncodeArguments('removeAuthorizedAddress(address)', [target]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
                     to: self.address,
@@ -333,12 +320,18 @@ export class ERC721ProxyContract extends BaseContract {
                     data: encodedData,
                 },
                 self._web3Wrapper.getContractDefaults(),
-                self.removeAuthorizedAddress.estimateGasAsync.bind(self, target.toLowerCase()),
+                self.removeAuthorizedAddress.estimateGasAsync.bind(self, target),
             );
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const txHash = await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
             return txHash;
         },
@@ -378,9 +371,8 @@ export class ERC721ProxyContract extends BaseContract {
          * @returns The hash of the transaction
          */
         async estimateGasAsync(target: string, txData?: Partial<TxData> | undefined): Promise<number> {
-            assert.isString('target', target);
             const self = (this as any) as ERC721ProxyContract;
-            const encodedData = self._strictEncodeArguments('removeAuthorizedAddress(address)', [target.toLowerCase()]);
+            const encodedData = self._strictEncodeArguments('removeAuthorizedAddress(address)', [target]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
                     to: self.address,
@@ -392,14 +384,15 @@ export class ERC721ProxyContract extends BaseContract {
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const gas = await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
             return gas;
-        },
-        async validateAndSendTransactionAsync(target: string, txData?: Partial<TxData> | undefined): Promise<string> {
-            await (this as any).removeAuthorizedAddress.callAsync(target, txData);
-            const txHash = await (this as any).removeAuthorizedAddress.sendTransactionAsync(target, txData);
-            return txHash;
         },
         /**
          * Sends a read-only call to the contract method. Returns the result that would happen if one were to send an
@@ -449,7 +442,6 @@ export class ERC721ProxyContract extends BaseContract {
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
          * @param target Address to remove authorization from.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(target: string): string {
             assert.isString('target', target);
@@ -459,29 +451,24 @@ export class ERC721ProxyContract extends BaseContract {
             ]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): [string] {
+        getABIDecodedTransactionData(callData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('removeAuthorizedAddress(address)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<[string]>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('removeAuthorizedAddress(address)');
             // tslint:disable boolean-naming
             const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<void>(returnData);
             return abiDecodedReturnData;
+        },
+        async validateAndSendTransactionAsync(target: string, txData?: Partial<TxData> | undefined): Promise<string> {
+            await (this as any).removeAuthorizedAddress.callAsync(target, txData);
+            const txHash = await (this as any).removeAuthorizedAddress.sendTransactionAsync(target, txData);
+            return txHash;
         },
     };
     public owner = {
@@ -530,30 +517,19 @@ export class ERC721ProxyContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncodedTransactionData = self._strictEncodeArguments('owner()', []);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): void {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('owner()');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('owner()');
@@ -579,11 +555,9 @@ export class ERC721ProxyContract extends BaseContract {
             index: BigNumber,
             txData?: Partial<TxData> | undefined,
         ): Promise<string> {
-            assert.isString('target', target);
-            assert.isBigNumber('index', index);
             const self = (this as any) as ERC721ProxyContract;
             const encodedData = self._strictEncodeArguments('removeAuthorizedAddressAtIndex(address,uint256)', [
-                target.toLowerCase(),
+                target,
                 index,
             ]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
@@ -593,12 +567,18 @@ export class ERC721ProxyContract extends BaseContract {
                     data: encodedData,
                 },
                 self._web3Wrapper.getContractDefaults(),
-                self.removeAuthorizedAddressAtIndex.estimateGasAsync.bind(self, target.toLowerCase(), index),
+                self.removeAuthorizedAddressAtIndex.estimateGasAsync.bind(self, target, index),
             );
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const txHash = await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
             return txHash;
         },
@@ -650,11 +630,9 @@ export class ERC721ProxyContract extends BaseContract {
             index: BigNumber,
             txData?: Partial<TxData> | undefined,
         ): Promise<number> {
-            assert.isString('target', target);
-            assert.isBigNumber('index', index);
             const self = (this as any) as ERC721ProxyContract;
             const encodedData = self._strictEncodeArguments('removeAuthorizedAddressAtIndex(address,uint256)', [
-                target.toLowerCase(),
+                target,
                 index,
             ]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
@@ -668,22 +646,15 @@ export class ERC721ProxyContract extends BaseContract {
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const gas = await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
             return gas;
-        },
-        async validateAndSendTransactionAsync(
-            target: string,
-            index: BigNumber,
-            txData?: Partial<TxData> | undefined,
-        ): Promise<string> {
-            await (this as any).removeAuthorizedAddressAtIndex.callAsync(target, index, txData);
-            const txHash = await (this as any).removeAuthorizedAddressAtIndex.sendTransactionAsync(
-                target,
-                index,
-                txData,
-            );
-            return txHash;
         },
         /**
          * Sends a read-only call to the contract method. Returns the result that would happen if one were to send an
@@ -744,7 +715,6 @@ export class ERC721ProxyContract extends BaseContract {
          * to create a 0x transaction (see protocol spec for more details).
          * @param target Address to remove authorization from.
          * @param index Index of target in authorities array.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(target: string, index: BigNumber): string {
             assert.isString('target', target);
@@ -756,29 +726,32 @@ export class ERC721ProxyContract extends BaseContract {
             );
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): [string, BigNumber] {
+        getABIDecodedTransactionData(callData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('removeAuthorizedAddressAtIndex(address,uint256)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<[string, BigNumber]>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('removeAuthorizedAddressAtIndex(address,uint256)');
             // tslint:disable boolean-naming
             const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<void>(returnData);
             return abiDecodedReturnData;
+        },
+        async validateAndSendTransactionAsync(
+            target: string,
+            index: BigNumber,
+            txData?: Partial<TxData> | undefined,
+        ): Promise<string> {
+            await (this as any).removeAuthorizedAddressAtIndex.callAsync(target, index, txData);
+            const txHash = await (this as any).removeAuthorizedAddressAtIndex.sendTransactionAsync(
+                target,
+                index,
+                txData,
+            );
+            return txHash;
         },
     };
     /**
@@ -802,17 +775,25 @@ export class ERC721ProxyContract extends BaseContract {
             }
             const self = (this as any) as ERC721ProxyContract;
             const encodedData = self._strictEncodeArguments('getProxyId()', []);
-            const encodedDataBytes = Buffer.from(encodedData.substr(2), 'hex');
-
+            const callDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
+                {
+                    to: self.address,
+                    ...callData,
+                    data: encodedData,
+                },
+                self._web3Wrapper.getContractDefaults(),
+            );
+            callDataWithDefaults.from = callDataWithDefaults.from
+                ? callDataWithDefaults.from.toLowerCase()
+                : callDataWithDefaults.from;
             let rawCallResult;
             try {
-                rawCallResult = await self.evmExecAsync(encodedDataBytes);
+                rawCallResult = await self._web3Wrapper.callAsync(callDataWithDefaults, defaultBlock);
             } catch (err) {
                 BaseContract._throwIfThrownErrorIsRevertError(err);
                 throw err;
             }
             BaseContract._throwIfCallResultIsRevertError(rawCallResult);
-
             const abiEncoder = self._lookupAbiEncoder('getProxyId()');
             // tslint:disable boolean-naming
             const result = abiEncoder.strictDecodeReturnValue<string>(rawCallResult);
@@ -823,30 +804,19 @@ export class ERC721ProxyContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncodedTransactionData = self._strictEncodeArguments('getProxyId()', []);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): void {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('getProxyId()');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('getProxyId()');
@@ -906,7 +876,6 @@ export class ERC721ProxyContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(index_0: string): string {
             assert.isString('index_0', index_0);
@@ -916,23 +885,13 @@ export class ERC721ProxyContract extends BaseContract {
             ]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): string {
+        getABIDecodedTransactionData(callData: string): boolean {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('authorized(address)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<boolean>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): boolean {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('authorized(address)');
@@ -991,30 +950,19 @@ export class ERC721ProxyContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(): string {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncodedTransactionData = self._strictEncodeArguments('getAuthorizedAddresses()', []);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): void {
+        getABIDecodedTransactionData(callData: string): string[] {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('getAuthorizedAddresses()');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string[]>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string[] {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('getAuthorizedAddresses()');
@@ -1031,9 +979,8 @@ export class ERC721ProxyContract extends BaseContract {
          * @returns The hash of the transaction
          */
         async sendTransactionAsync(newOwner: string, txData?: Partial<TxData> | undefined): Promise<string> {
-            assert.isString('newOwner', newOwner);
             const self = (this as any) as ERC721ProxyContract;
-            const encodedData = self._strictEncodeArguments('transferOwnership(address)', [newOwner.toLowerCase()]);
+            const encodedData = self._strictEncodeArguments('transferOwnership(address)', [newOwner]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
                     to: self.address,
@@ -1041,12 +988,18 @@ export class ERC721ProxyContract extends BaseContract {
                     data: encodedData,
                 },
                 self._web3Wrapper.getContractDefaults(),
-                self.transferOwnership.estimateGasAsync.bind(self, newOwner.toLowerCase()),
+                self.transferOwnership.estimateGasAsync.bind(self, newOwner),
             );
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const txHash = await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
             return txHash;
         },
@@ -1084,9 +1037,8 @@ export class ERC721ProxyContract extends BaseContract {
          * @returns The hash of the transaction
          */
         async estimateGasAsync(newOwner: string, txData?: Partial<TxData> | undefined): Promise<number> {
-            assert.isString('newOwner', newOwner);
             const self = (this as any) as ERC721ProxyContract;
-            const encodedData = self._strictEncodeArguments('transferOwnership(address)', [newOwner.toLowerCase()]);
+            const encodedData = self._strictEncodeArguments('transferOwnership(address)', [newOwner]);
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
                     to: self.address,
@@ -1098,14 +1050,15 @@ export class ERC721ProxyContract extends BaseContract {
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const gas = await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
             return gas;
-        },
-        async validateAndSendTransactionAsync(newOwner: string, txData?: Partial<TxData> | undefined): Promise<string> {
-            await (this as any).transferOwnership.callAsync(newOwner, txData);
-            const txHash = await (this as any).transferOwnership.sendTransactionAsync(newOwner, txData);
-            return txHash;
         },
         /**
          * Sends a read-only call to the contract method. Returns the result that would happen if one were to send an
@@ -1153,7 +1106,6 @@ export class ERC721ProxyContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(newOwner: string): string {
             assert.isString('newOwner', newOwner);
@@ -1163,29 +1115,24 @@ export class ERC721ProxyContract extends BaseContract {
             ]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): [string] {
+        getABIDecodedTransactionData(callData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('transferOwnership(address)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<[string]>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): void {
             const self = (this as any) as ERC721ProxyContract;
             const abiEncoder = self._lookupAbiEncoder('transferOwnership(address)');
             // tslint:disable boolean-naming
             const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<void>(returnData);
             return abiDecodedReturnData;
+        },
+        async validateAndSendTransactionAsync(newOwner: string, txData?: Partial<TxData> | undefined): Promise<string> {
+            await (this as any).transferOwnership.callAsync(newOwner, txData);
+            const txHash = await (this as any).transferOwnership.sendTransactionAsync(newOwner, txData);
+            return txHash;
         },
     };
     private readonly _subscriptionManager: SubscriptionManager<ERC721ProxyEventArgs, ERC721ProxyEvents>;

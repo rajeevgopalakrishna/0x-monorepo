@@ -20,12 +20,15 @@ export {
     ConstructorStateMutability,
 } from 'ethereum-types';
 
-export { SignedOrder, AssetPairsItem, APIOrder, Asset } from '@0x/types';
+export { SignedOrder } from '@0x/types';
 export { BigNumber } from '@0x/utils';
 
 export { SwapQuoteConsumer } from './quote_consumers/swap_quote_consumer';
 export { SwapQuoter } from './swap_quoter';
 export { InsufficientAssetLiquidityError } from './errors';
+
+export { BasicOrderProvider } from './order_providers/basic_order_provider';
+export { StandardRelayerAPIOrderProvider } from './order_providers/standard_relayer_api_order_provider';
 
 export {
     SwapQuoterError,
@@ -47,22 +50,12 @@ export {
     MarketBuySwapQuoteWithAffiliateFee,
     MarketSellSwapQuoteWithAffiliateFee,
     LiquidityForAssetData,
+    LiquidityRequestOpts,
     OrdersAndFillableAmounts,
+    OrderProvider,
+    OrderProviderRequest,
+    OrderProviderResponse,
+    SignedOrderWithRemainingFillableMakerAssetAmount,
     SwapQuoteConsumerBase,
     SwapQuoteRequestOpts,
 } from './types';
-
-export {
-    Orderbook,
-    MeshOrderProviderOpts,
-    SRAPollingOrderProviderOpts,
-    SRAWebsocketOrderProviderOpts,
-    BaseOrderProvider,
-    OrderStore,
-    AcceptedRejectedOrders,
-    RejectedOrder,
-    AddedRemovedOrders,
-    OrderSet,
-} from '@0x/orderbook';
-
-export { WSOpts } from '@0x/mesh-rpc-client';

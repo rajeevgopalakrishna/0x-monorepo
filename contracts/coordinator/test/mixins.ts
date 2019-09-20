@@ -114,7 +114,8 @@ describe('Mixins tests', () => {
                 transaction.signature.length - 2,
             )}${illegalSignatureByte}`;
             const transactionHash = transactionHashUtils.getTransactionHashHex(transaction);
-            expect(mixins.getSignerAddress.callAsync(transactionHash, transaction.signature)).to.be.rejectedWith(
+            expectContractCallFailedAsync(
+                mixins.getSignerAddress.callAsync(transactionHash, transaction.signature),
                 RevertReason.SignatureIllegal,
             );
         });
@@ -124,7 +125,8 @@ describe('Mixins tests', () => {
             const invalidSignatureByte = ethUtil.toBuffer(SignatureType.Invalid).toString('hex');
             transaction.signature = `0x${invalidSignatureByte}`;
             const transactionHash = transactionHashUtils.getTransactionHashHex(transaction);
-            expect(mixins.getSignerAddress.callAsync(transactionHash, transaction.signature)).to.be.rejectedWith(
+            expectContractCallFailedAsync(
+                mixins.getSignerAddress.callAsync(transactionHash, transaction.signature),
                 RevertReason.SignatureInvalid,
             );
         });
@@ -137,7 +139,8 @@ describe('Mixins tests', () => {
                 transaction.signature.length - 2,
             )}${invalidSignatureByte}`;
             const transactionHash = transactionHashUtils.getTransactionHashHex(transaction);
-            expect(mixins.getSignerAddress.callAsync(transactionHash, transaction.signature)).to.be.rejectedWith(
+            expectContractCallFailedAsync(
+                mixins.getSignerAddress.callAsync(transactionHash, transaction.signature),
                 RevertReason.SignatureUnsupported,
             );
         });

@@ -25,7 +25,7 @@ import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "@0x/contracts-utils/contracts/src/LibAddressArray.sol";
 import "@0x/contracts-exchange/contracts/src/interfaces/IExchange.sol";
 import "./libs/LibCoordinatorApproval.sol";
-import "./interfaces/ICoordinatorSignatureValidator.sol";
+import "./interfaces/ISignatureValidator.sol";
 import "./interfaces/ICoordinatorApprovalVerifier.sol";
 
 
@@ -33,7 +33,7 @@ import "./interfaces/ICoordinatorApprovalVerifier.sol";
 contract MixinCoordinatorApprovalVerifier is
     LibCoordinatorApproval,
     LibZeroExTransaction,
-    ICoordinatorSignatureValidator,
+    ISignatureValidator,
     ICoordinatorApprovalVerifier
 {
     using LibBytes for bytes;

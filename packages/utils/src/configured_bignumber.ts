@@ -16,7 +16,7 @@ BigNumber.config({
 import isNode = require('detect-node');
 if (isNode) {
     // Dynamically load a NodeJS specific module.
-    // TypeScript requires all imports to be global, so we need to use
+    // Typescript requires all imports to be global, so we need to use
     // `const` here and disable the tslint warning.
     // tslint:disable-next-line: no-var-requires
     const util = require('util');

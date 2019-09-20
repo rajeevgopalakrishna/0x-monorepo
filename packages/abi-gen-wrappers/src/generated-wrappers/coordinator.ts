@@ -6,7 +6,6 @@ import { schemas } from '@0x/json-schemas';
 import {
     BlockParam,
     BlockParamLiteral,
-    BlockRange,
     CallData,
     ContractAbi,
     ContractArtifact,
@@ -57,17 +56,25 @@ export class CoordinatorContract extends BaseContract {
             }
             const self = (this as any) as CoordinatorContract;
             const encodedData = self._strictEncodeArguments('getSignerAddress(bytes32,bytes)', [hash, signature]);
-            const encodedDataBytes = Buffer.from(encodedData.substr(2), 'hex');
-
+            const callDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
+                {
+                    to: self.address,
+                    ...callData,
+                    data: encodedData,
+                },
+                self._web3Wrapper.getContractDefaults(),
+            );
+            callDataWithDefaults.from = callDataWithDefaults.from
+                ? callDataWithDefaults.from.toLowerCase()
+                : callDataWithDefaults.from;
             let rawCallResult;
             try {
-                rawCallResult = await self.evmExecAsync(encodedDataBytes);
+                rawCallResult = await self._web3Wrapper.callAsync(callDataWithDefaults, defaultBlock);
             } catch (err) {
                 BaseContract._throwIfThrownErrorIsRevertError(err);
                 throw err;
             }
             BaseContract._throwIfCallResultIsRevertError(rawCallResult);
-
             const abiEncoder = self._lookupAbiEncoder('getSignerAddress(bytes32,bytes)');
             // tslint:disable boolean-naming
             const result = abiEncoder.strictDecodeReturnValue<string>(rawCallResult);
@@ -80,7 +87,6 @@ export class CoordinatorContract extends BaseContract {
          * to create a 0x transaction (see protocol spec for more details).
          * @param hash Any 32 byte hash.
          * @param signature Proof that the hash has been signed by signer.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(hash: string, signature: string): string {
             assert.isString('hash', hash);
@@ -92,11 +98,6 @@ export class CoordinatorContract extends BaseContract {
             ]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
         getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('getSignerAddress(bytes32,bytes)');
@@ -104,11 +105,6 @@ export class CoordinatorContract extends BaseContract {
             const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('getSignerAddress(bytes32,bytes)');
@@ -175,7 +171,6 @@ export class CoordinatorContract extends BaseContract {
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
          * @param transaction 0x transaction containing salt, signerAddress, and data.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(transaction: { salt: BigNumber; signerAddress: string; data: string }): string {
             const self = (this as any) as CoordinatorContract;
@@ -185,27 +180,13 @@ export class CoordinatorContract extends BaseContract {
             );
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): { salt: BigNumber; signerAddress: string; data: string } {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('getTransactionHash((uint256,address,bytes))');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<{
-                salt: BigNumber;
-                signerAddress: string;
-                data: string;
-            }>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('getTransactionHash((uint256,address,bytes))');
@@ -280,7 +261,6 @@ export class CoordinatorContract extends BaseContract {
          * to create a 0x transaction (see protocol spec for more details).
          * @param approval Coordinator approval message containing the transaction
          *     hash, transaction signature, and expiration of the approval.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(approval: {
             txOrigin: string;
@@ -295,35 +275,13 @@ export class CoordinatorContract extends BaseContract {
             );
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(
-            callData: string,
-        ): {
-            txOrigin: string;
-            transactionHash: string;
-            transactionSignature: string;
-            approvalExpirationTimeSeconds: BigNumber;
-        } {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('getCoordinatorApprovalHash((address,bytes32,bytes,uint256))');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<{
-                txOrigin: string;
-                transactionHash: string;
-                transactionSignature: string;
-                approvalExpirationTimeSeconds: BigNumber;
-            }>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('getCoordinatorApprovalHash((address,bytes32,bytes,uint256))');
@@ -359,20 +317,10 @@ export class CoordinatorContract extends BaseContract {
             approvalSignatures: string[],
             txData?: Partial<TxData> | undefined,
         ): Promise<string> {
-            assert.isString('txOrigin', txOrigin);
-            assert.isString('transactionSignature', transactionSignature);
-            assert.isArray('approvalExpirationTimeSeconds', approvalExpirationTimeSeconds);
-            assert.isArray('approvalSignatures', approvalSignatures);
             const self = (this as any) as CoordinatorContract;
             const encodedData = self._strictEncodeArguments(
                 'executeTransaction((uint256,address,bytes),address,bytes,uint256[],bytes[])',
-                [
-                    transaction,
-                    txOrigin.toLowerCase(),
-                    transactionSignature,
-                    approvalExpirationTimeSeconds,
-                    approvalSignatures,
-                ],
+                [transaction, txOrigin, transactionSignature, approvalExpirationTimeSeconds, approvalSignatures],
             );
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
@@ -384,7 +332,7 @@ export class CoordinatorContract extends BaseContract {
                 self.executeTransaction.estimateGasAsync.bind(
                     self,
                     transaction,
-                    txOrigin.toLowerCase(),
+                    txOrigin,
                     transactionSignature,
                     approvalExpirationTimeSeconds,
                     approvalSignatures,
@@ -393,7 +341,13 @@ export class CoordinatorContract extends BaseContract {
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const txHash = await self._web3Wrapper.sendTransactionAsync(txDataWithDefaults);
             return txHash;
         },
@@ -470,20 +424,10 @@ export class CoordinatorContract extends BaseContract {
             approvalSignatures: string[],
             txData?: Partial<TxData> | undefined,
         ): Promise<number> {
-            assert.isString('txOrigin', txOrigin);
-            assert.isString('transactionSignature', transactionSignature);
-            assert.isArray('approvalExpirationTimeSeconds', approvalExpirationTimeSeconds);
-            assert.isArray('approvalSignatures', approvalSignatures);
             const self = (this as any) as CoordinatorContract;
             const encodedData = self._strictEncodeArguments(
                 'executeTransaction((uint256,address,bytes),address,bytes,uint256[],bytes[])',
-                [
-                    transaction,
-                    txOrigin.toLowerCase(),
-                    transactionSignature,
-                    approvalExpirationTimeSeconds,
-                    approvalSignatures,
-                ],
+                [transaction, txOrigin, transactionSignature, approvalExpirationTimeSeconds, approvalSignatures],
             );
             const txDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
                 {
@@ -496,35 +440,15 @@ export class CoordinatorContract extends BaseContract {
             if (txDataWithDefaults.from !== undefined) {
                 txDataWithDefaults.from = txDataWithDefaults.from.toLowerCase();
             }
-
+            try {
+                return await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
+            } catch (err) {
+                // Try to decode ganache transaction revert Errors.
+                BaseContract._throwIfThrownErrorIsRevertError(err);
+                throw err;
+            }
             const gas = await self._web3Wrapper.estimateGasAsync(txDataWithDefaults);
             return gas;
-        },
-        async validateAndSendTransactionAsync(
-            transaction: { salt: BigNumber; signerAddress: string; data: string },
-            txOrigin: string,
-            transactionSignature: string,
-            approvalExpirationTimeSeconds: BigNumber[],
-            approvalSignatures: string[],
-            txData?: Partial<TxData> | undefined,
-        ): Promise<string> {
-            await (this as any).executeTransaction.callAsync(
-                transaction,
-                txOrigin,
-                transactionSignature,
-                approvalExpirationTimeSeconds,
-                approvalSignatures,
-                txData,
-            );
-            const txHash = await (this as any).executeTransaction.sendTransactionAsync(
-                transaction,
-                txOrigin,
-                transactionSignature,
-                approvalExpirationTimeSeconds,
-                approvalSignatures,
-                txData,
-            );
-            return txHash;
         },
         /**
          * Sends a read-only call to the contract method. Returns the result that would happen if one were to send an
@@ -612,7 +536,6 @@ export class CoordinatorContract extends BaseContract {
          *     for which each corresponding approval signature expires.
          * @param approvalSignatures Array of signatures that correspond to the
          *     feeRecipients of each order in the transaction's Exchange calldata.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(
             transaction: { salt: BigNumber; signerAddress: string; data: string },
@@ -638,29 +561,15 @@ export class CoordinatorContract extends BaseContract {
             );
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(
-            callData: string,
-        ): [{ salt: BigNumber; signerAddress: string; data: string }, string, string, BigNumber[], string[]] {
+        getABIDecodedTransactionData(callData: string): void {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder(
                 'executeTransaction((uint256,address,bytes),address,bytes,uint256[],bytes[])',
             );
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<
-                [{ salt: BigNumber; signerAddress: string; data: string }, string, string, BigNumber[], string[]]
-            >(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): void {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder(
@@ -669,6 +578,32 @@ export class CoordinatorContract extends BaseContract {
             // tslint:disable boolean-naming
             const abiDecodedReturnData = abiEncoder.strictDecodeReturnValue<void>(returnData);
             return abiDecodedReturnData;
+        },
+        async validateAndSendTransactionAsync(
+            transaction: { salt: BigNumber; signerAddress: string; data: string },
+            txOrigin: string,
+            transactionSignature: string,
+            approvalExpirationTimeSeconds: BigNumber[],
+            approvalSignatures: string[],
+            txData?: Partial<TxData> | undefined,
+        ): Promise<string> {
+            await (this as any).executeTransaction.callAsync(
+                transaction,
+                txOrigin,
+                transactionSignature,
+                approvalExpirationTimeSeconds,
+                approvalSignatures,
+                txData,
+            );
+            const txHash = await (this as any).executeTransaction.sendTransactionAsync(
+                transaction,
+                txOrigin,
+                transactionSignature,
+                approvalExpirationTimeSeconds,
+                approvalSignatures,
+                txData,
+            );
+            return txHash;
         },
     };
     public EIP712_EXCHANGE_DOMAIN_HASH = {
@@ -717,30 +652,19 @@ export class CoordinatorContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncodedTransactionData = self._strictEncodeArguments('EIP712_EXCHANGE_DOMAIN_HASH()', []);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): void {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('EIP712_EXCHANGE_DOMAIN_HASH()');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('EIP712_EXCHANGE_DOMAIN_HASH()');
@@ -840,7 +764,6 @@ export class CoordinatorContract extends BaseContract {
          *     for which each corresponding approval signature expires.
          * @param approvalSignatures Array of signatures that correspond to the
          *     feeRecipients of each order in the transaction's Exchange calldata.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(
             transaction: { salt: BigNumber; signerAddress: string; data: string },
@@ -866,29 +789,15 @@ export class CoordinatorContract extends BaseContract {
             );
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(
-            callData: string,
-        ): [{ salt: BigNumber; signerAddress: string; data: string }, string, string, BigNumber[], string[]] {
+        getABIDecodedTransactionData(callData: string): void {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder(
                 'assertValidCoordinatorApprovals((uint256,address,bytes),address,bytes,uint256[],bytes[])',
             );
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<
-                [{ salt: BigNumber; signerAddress: string; data: string }, string, string, BigNumber[], string[]]
-            >(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): void {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder(
@@ -941,17 +850,25 @@ export class CoordinatorContract extends BaseContract {
             }
             const self = (this as any) as CoordinatorContract;
             const encodedData = self._strictEncodeArguments('decodeOrdersFromFillData(bytes)', [data]);
-            const encodedDataBytes = Buffer.from(encodedData.substr(2), 'hex');
-
+            const callDataWithDefaults = await BaseContract._applyDefaultsToTxDataAsync(
+                {
+                    to: self.address,
+                    ...callData,
+                    data: encodedData,
+                },
+                self._web3Wrapper.getContractDefaults(),
+            );
+            callDataWithDefaults.from = callDataWithDefaults.from
+                ? callDataWithDefaults.from.toLowerCase()
+                : callDataWithDefaults.from;
             let rawCallResult;
             try {
-                rawCallResult = await self.evmExecAsync(encodedDataBytes);
+                rawCallResult = await self._web3Wrapper.callAsync(callDataWithDefaults, defaultBlock);
             } catch (err) {
                 BaseContract._throwIfThrownErrorIsRevertError(err);
                 throw err;
             }
             BaseContract._throwIfCallResultIsRevertError(rawCallResult);
-
             const abiEncoder = self._lookupAbiEncoder('decodeOrdersFromFillData(bytes)');
             // tslint:disable boolean-naming
             const result = abiEncoder.strictDecodeReturnValue<
@@ -978,7 +895,6 @@ export class CoordinatorContract extends BaseContract {
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
          * @param data Exchange calldata representing a fill method.
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(data: string): string {
             assert.isString('data', data);
@@ -986,23 +902,43 @@ export class CoordinatorContract extends BaseContract {
             const abiEncodedTransactionData = self._strictEncodeArguments('decodeOrdersFromFillData(bytes)', [data]);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): string {
+        getABIDecodedTransactionData(
+            callData: string,
+        ): Array<{
+            makerAddress: string;
+            takerAddress: string;
+            feeRecipientAddress: string;
+            senderAddress: string;
+            makerAssetAmount: BigNumber;
+            takerAssetAmount: BigNumber;
+            makerFee: BigNumber;
+            takerFee: BigNumber;
+            expirationTimeSeconds: BigNumber;
+            salt: BigNumber;
+            makerAssetData: string;
+            takerAssetData: string;
+        }> {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('decodeOrdersFromFillData(bytes)');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<
+                Array<{
+                    makerAddress: string;
+                    takerAddress: string;
+                    feeRecipientAddress: string;
+                    senderAddress: string;
+                    makerAssetAmount: BigNumber;
+                    takerAssetAmount: BigNumber;
+                    makerFee: BigNumber;
+                    takerFee: BigNumber;
+                    expirationTimeSeconds: BigNumber;
+                    salt: BigNumber;
+                    makerAssetData: string;
+                    takerAssetData: string;
+                }>
+            >(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(
             returnData: string,
         ): Array<{
@@ -1087,30 +1023,19 @@ export class CoordinatorContract extends BaseContract {
          * Returns the ABI encoded transaction data needed to send an Ethereum transaction calling this method. Before
          * sending the Ethereum tx, this encoded tx data can first be sent to a separate signing service or can be used
          * to create a 0x transaction (see protocol spec for more details).
-         * @returns The ABI encoded transaction data as a string
          */
         getABIEncodedTransactionData(): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncodedTransactionData = self._strictEncodeArguments('EIP712_COORDINATOR_DOMAIN_HASH()', []);
             return abiEncodedTransactionData;
         },
-        /**
-         * Decode the ABI-encoded transaction data into its input arguments
-         * @param callData The ABI-encoded transaction data
-         * @returns An array representing the input arguments in order. Keynames of nested structs are preserved.
-         */
-        getABIDecodedTransactionData(callData: string): void {
+        getABIDecodedTransactionData(callData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('EIP712_COORDINATOR_DOMAIN_HASH()');
             // tslint:disable boolean-naming
-            const abiDecodedCallData = abiEncoder.strictDecode<void>(callData);
+            const abiDecodedCallData = abiEncoder.strictDecode<string>(callData);
             return abiDecodedCallData;
         },
-        /**
-         * Decode the ABI-encoded return data from a transaction
-         * @param returnData the data returned after transaction execution
-         * @returns An array representing the output results in order.  Keynames of nested structs are preserved.
-         */
         getABIDecodedReturnData(returnData: string): string {
             const self = (this as any) as CoordinatorContract;
             const abiEncoder = self._lookupAbiEncoder('EIP712_COORDINATOR_DOMAIN_HASH()');

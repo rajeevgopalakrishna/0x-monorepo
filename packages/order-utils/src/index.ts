@@ -72,7 +72,6 @@ export {
     EIP712DomainWithDefaultSchema,
     ZeroExTransaction,
     SignedZeroExTransaction,
-    ValidatorSignature,
 } from '@0x/types';
 
 export {
@@ -85,8 +84,7 @@ export {
     FeeOrdersAndRemainingFeeAmount,
     OrdersAndRemainingTakerFillAmount,
     OrdersAndRemainingMakerFillAmount,
-    ValidateOrderFillableOpts,
 } from './types';
 
+export { ExchangeContract, NetworkId } from '@0x/abi-gen-wrappers';
 export { ExchangeRevertErrors, ForwarderRevertErrors, LibMathRevertErrors, StakingRevertErrors };
-export { NetworkId, ExchangeContract } from '@0x/abi-gen-wrappers';

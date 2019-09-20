@@ -4,6 +4,7 @@ import { BigNumber } from '@0x/utils';
 import {
     ForwarderSwapQuoteExecutionOpts,
     ForwarderSwapQuoteGetOutputOpts,
+    LiquidityRequestOpts,
     OrdersAndFillableAmounts,
     SwapQuoteRequestOpts,
     SwapQuoterOpts,
@@ -29,6 +30,7 @@ const DEFAULT_FORWARDER_SWAP_QUOTE_GET_OPTS: ForwarderSwapQuoteGetOutputOpts = {
 const DEFAULT_FORWARDER_SWAP_QUOTE_EXECUTE_OPTS: ForwarderSwapQuoteExecutionOpts = DEFAULT_FORWARDER_SWAP_QUOTE_GET_OPTS;
 
 const DEFAULT_SWAP_QUOTE_REQUEST_OPTS: SwapQuoteRequestOpts = {
+    shouldForceOrderRefresh: false,
     shouldDisableRequestingFeeOrders: false,
     slippagePercentage: 0.2, // 20% slippage protection,
 };
@@ -36,6 +38,10 @@ const DEFAULT_SWAP_QUOTE_REQUEST_OPTS: SwapQuoteRequestOpts = {
 const EMPTY_ORDERS_AND_FILLABLE_AMOUNTS: OrdersAndFillableAmounts = {
     orders: [] as SignedOrder[],
     remainingFillableMakerAssetAmounts: [] as BigNumber[],
+};
+
+const DEFAULT_LIQUIDITY_REQUEST_OPTS: LiquidityRequestOpts = {
+    shouldForceOrderRefresh: false,
 };
 
 export const constants = {
@@ -52,4 +58,5 @@ export const constants = {
     DEFAULT_SWAP_QUOTE_REQUEST_OPTS,
     EMPTY_ORDERS_AND_FILLABLE_AMOUNTS,
     DEFAULT_PER_PAGE,
+    DEFAULT_LIQUIDITY_REQUEST_OPTS,
 };

@@ -42,7 +42,6 @@ describe('ExchangeTransferSimulator', async () => {
             from: devConstants.TESTRPC_FIRST_ADDRESS,
         };
 
-        await blockchainLifecycle.startAsync();
         const erc20Proxy = await ERC20ProxyContract.deployFrom0xArtifactAsync(
             artifacts.ERC20Proxy,
             provider,
@@ -73,9 +72,6 @@ describe('ExchangeTransferSimulator', async () => {
         await blockchainLifecycle.startAsync();
     });
     afterEach(async () => {
-        await blockchainLifecycle.revertAsync();
-    });
-    after(async () => {
         await blockchainLifecycle.revertAsync();
     });
     describe('#transferFromAsync', function(): void {

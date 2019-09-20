@@ -25,9 +25,7 @@ blockchainTests('LibRichErrors', env => {
                 const revertError = coerceThrownErrorAsRevertError(err);
                 return expect(revertError.encode()).to.eq(extraBytes);
             }
-            return;
-            // TODO(xianny): NOT WORKING, v3 merge
-            // return expect.fail('Expected call to revert');
+            return expect.fail('Expected call to revert');
         });
 
         it('should correctly revert a StringRevertError', async () => {
